@@ -1,0 +1,301 @@
+/* ================= ROOT ================= */
+:root {
+    --main-gradient: linear-gradient(120deg, #4f46e5, #3b82f6, #06b6d4);
+}
+
+/* ================= GLOBAL ================= */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Inter', sans-serif;
+
+    /* 🔥 SAME BACKGROUND EVERYWHERE */
+    background: var(--main-gradient);
+
+    color: white;
+}
+
+/* ================= LAYOUT ================= */
+.main {
+    display: flex;
+    min-height: 100vh;
+
+    /* inherit gradient */
+    background: transparent;
+}
+
+/* ================= SIDEBAR ================= */
+.sidebar {
+    width: 240px;
+    padding: 24px;
+
+    /* 🔥 glass style */
+    background: rgba(255,255,255,0.12);
+    border-right: 1px solid rgba(255,255,255,0.2);
+
+    backdrop-filter: blur(10px);
+}
+
+.sidebar h2 {
+    font-size: 20px;
+    font-weight: 700;
+}
+
+.sidebar p {
+    margin: 10px 0 20px;
+    color: rgba(255,255,255,0.8);
+}
+
+/* ================= CONTENT ================= */
+.content {
+    flex: 1;
+    padding: 32px 40px;
+}
+
+/* ================= HEADINGS ================= */
+h1 {
+    font-size: 28px;
+    margin-bottom: 20px;
+}
+
+h2 {
+    margin-bottom: 12px;
+}
+
+/* ================= STATS ================= */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+}
+
+.stat-box {
+    padding: 18px;
+    border-radius: 12px;
+
+    /* 🔥 glass */
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+
+    backdrop-filter: blur(10px);
+
+    box-shadow: 
+        0 10px 30px rgba(0,0,0,0.2),
+        inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+/* ================= CARD ================= */
+.card {
+    margin-top: 24px;
+    padding: 20px;
+    border-radius: 14px;
+
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+
+    backdrop-filter: blur(10px);
+
+    box-shadow: 
+        0 10px 30px rgba(0,0,0,0.2),
+        inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+/* ================= FORM ================= */
+.form-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+}
+
+/* ================= INPUT ================= */
+input, select {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: none;
+    margin-top: 10px;
+
+    background: rgba(255,255,255,0.9);
+    color: #000;
+}
+
+input:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #3b82f6;
+}
+
+/* ================= BUTTONS ================= */
+.primary-btn {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    border: none;
+
+    background: #2563eb;
+    color: white;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.btn {
+    padding: 6px 12px;
+    border-radius: 8px;
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+/* COLORS */
+.edit-btn {
+    background: #3b82f6;
+    color: white;
+}
+
+.delete-btn {
+    background: #ef4444;
+    color: white;
+}
+
+.save-btn {
+    background: #22c55e;
+    color: white;
+}
+
+/* ================= TASK ================= */
+.task {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 12px;
+
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+
+    backdrop-filter: blur(10px);
+
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    box-shadow: 
+        0 10px 30px rgba(0,0,0,0.2),
+        inset 0 1px 0 rgba(255,255,255,0.3);
+}
+
+/* TASK TEXT */
+.task h3 {
+    font-size: 15px;
+}
+
+.task p {
+    font-size: 13px;
+    color: rgba(255,255,255,0.8);
+}
+
+/* ================= STATUS ================= */
+.status {
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    margin-top: 6px;
+    display: inline-block;
+}
+
+.completed {
+    background: #22c55e;
+    color: white;
+}
+
+.pending {
+    background: #facc15;
+    color: black;
+}
+
+/* ================= BUTTON GROUP ================= */
+.btn-group {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+}
+
+/* ================= AUTH ================= */
+.auth-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100vh;
+    padding: 0 80px;
+
+    background: var(--main-gradient);
+}
+
+.auth-left {
+    flex: 1;
+    color: white;
+
+}
+
+.auth-left h1 {
+    font-size: 50px;
+    transform: translateY(-60px);
+    padding-right: 20px;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.auth-left p {
+    margin-top: 10px;
+    opacity: 0.9;
+    justify-content: center;
+    transform: translateY(-60px);
+    padding-left:260px;
+    font-size: 25px;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+}
+
+.auth-right {
+    width: 400px;
+    padding: 30px;
+    border-radius: 14px;
+
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+
+    backdrop-filter: blur(10px);
+
+    box-shadow: 
+        0 12px 30px rgba(0,0,0,0.25),
+        inset 0 1px 0 rgba(255,255,255,0.4);
+}
+.auth-right p {
+    margin-top: 12px;
+    color: rgba(255,255,255,0.8);
+    font-size: 12px;
+}
+/* ================= RESPONSIVE ================= */
+@media (max-width: 992px) {
+    .main {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+    }
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+    .auth-left {
+        display: none;
+    }
+
+    .auth-right {
+        width: 100%;
+        max-width: 350px;
+        margin: auto;
+    }
+}
