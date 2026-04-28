@@ -21,20 +21,6 @@ function showToast(message, type = "success") {
     }, 3000);
 }
 
-// CHECK OVERDUE
-function isOverdue(dueDate, dueTime) {
-    if (!dueDate) return false;
-    
-    let dateStr = dueDate;
-    if (dueTime) dateStr += `T${dueTime}`;
-    else dateStr += `T23:59:59`; // Default to end of day if no time
-    
-    const taskDate = new Date(dateStr);
-    const now = new Date();
-    
-    return taskDate < now;
-}
-
 // LOAD TASKS
 async function loadTasks() {
     try {
@@ -50,45 +36,13 @@ async function loadTasks() {
 
 // FILTER & SORT
 function applyFiltersAndRender() {
-    const searchStr = document.getElementById("search")?.value.toLowerCase() || "";
-    const statusFilter = document.getElementById("filterStatus")?.value || "all";
-    const catFilter = document.getElementById("filterCategory")?.value || "all";
-    const sortOption = document.getElementById("sortOption")?.value || "default";
-
-    let filtered = allTasks.filter(t => {
-        // Search
-        const matchesSearch = t.title.toLowerCase().includes(searchStr) || (t.desc && t.desc.toLowerCase().includes(searchStr));
-        // Status
-        const matchesStatus = statusFilter === "all" || t.status === statusFilter;
-        // Category
-        const matchesCat = catFilter === "all" || (t.category || "General") === catFilter;
-        
-        return matchesSearch && matchesStatus && matchesCat;
-    });
-
-    // Sort
-    if (sortOption === "dateAsc" || sortOption === "dateDesc") {
-        filtered.sort((a, b) => {
-            if (!a.dueDate && !b.dueDate) return 0;
-            if (!a.dueDate) return 1; // null dates at bottom (default user preference)
-            if (!b.dueDate) return -1;
-            
-            const aDate = new Date(`${a.dueDate}T${a.dueTime || "23:59:59"}`);
-            const bDate = new Date(`${b.dueDate}T${b.dueTime || "23:59:59"}`);
-            
-            return sortOption === "dateAsc" ? aDate - bDate : bDate - aDate;
-        });
-    }
-
-    renderTasks(filtered);
+    renderTasks(allTasks);
 }
 
 // ADD TASK
 async function addTask() {
     const title = document.getElementById("title").value.trim();
     const desc = document.getElementById("desc").value.trim();
-    const dueDate = document.getElementById("dueDate").value;
-    const dueTime = document.getElementById("dueTime").value;
     const category = document.getElementById("category").value;
 
     if (!title) {
@@ -103,14 +57,12 @@ async function addTask() {
                 "Content-Type": "application/json",
                 Authorization: token
             },
-            body: JSON.stringify({ title, desc, dueDate, dueTime, category, status: "pending" })
+            body: JSON.stringify({ title, desc, category, status: "pending" })
         });
         
         // Reset inputs
         document.getElementById("title").value = "";
         document.getElementById("desc").value = "";
-        document.getElementById("dueDate").value = "";
-        document.getElementById("dueTime").value = "";
         document.getElementById("category").value = "General";
 
         showToast("Task added successfully!", "success");
@@ -167,8 +119,6 @@ function startEdit(id) {
 async function saveEdit(task) {
     const newTitle = document.getElementById(`edit-title-${task._id}`).value.trim();
     const newDesc = document.getElementById(`edit-desc-${task._id}`).value.trim();
-    const newDueDate = document.getElementById(`edit-date-${task._id}`).value;
-    const newDueTime = document.getElementById(`edit-time-${task._id}`).value;
     const newCat = document.getElementById(`edit-cat-${task._id}`).value;
 
     if (!newTitle) {
@@ -184,11 +134,8 @@ async function saveEdit(task) {
                 Authorization: token
             },
             body: JSON.stringify({
-                ...task,
                 title: newTitle,
                 desc: newDesc,
-                dueDate: newDueDate,
-                dueTime: newDueTime,
                 category: newCat
             })
         });
@@ -225,8 +172,6 @@ function renderTasks(tasks) {
                     <div style="flex: 1; margin-right: 15px;">
                         <input id="edit-title-${task._id}" value="${task.title}" class="edit-input" placeholder="Title">
                         <input id="edit-desc-${task._id}" value="${task.desc}" class="edit-input" placeholder="Description">
-                        <input type="date" id="edit-date-${task._id}" value="${task.dueDate || ''}" class="edit-input">
-                        <input type="time" id="edit-time-${task._id}" value="${task.dueTime || ''}" class="edit-input">
                         <select id="edit-cat-${task._id}" class="edit-input">
                             <option value="General" ${catValue === 'General' ? 'selected' : ''}>General</option>
                             <option value="Work" ${catValue === 'Work' ? 'selected' : ''}>Work</option>
@@ -244,14 +189,11 @@ function renderTasks(tasks) {
                 </div>
             `;
         } else {
-            const overdue = (task.status !== "completed" && isOverdue(task.dueDate, task.dueTime)) ? "overdue" : "";
-            
             htmlStr += `
-                <div class="task ${overdue}">
+                <div class="task">
                     <div class="task-info">
                         <h3>${task.title}</h3>
                         <p>${task.desc}</p>
-                        ${task.dueDate || task.dueTime ? `<p class="due-date">Due: ${task.dueDate || ''} ${task.dueTime || ''}</p>` : ''}
                         <span class="category-tag">${catValue}</span>
                     </div>
 
