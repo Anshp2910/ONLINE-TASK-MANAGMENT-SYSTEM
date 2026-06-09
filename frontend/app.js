@@ -1,4 +1,4 @@
-const API = process.env.REACT_APP_API_URL ? `${process.env.REACT_APP_API_URL}/api/tasks` : "http://localhost:5000/api/tasks";
+const API = "/api/tasks";
 const token = localStorage.getItem("token");
 
 let editingId = null;

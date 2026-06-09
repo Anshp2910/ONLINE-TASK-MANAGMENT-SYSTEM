@@ -1,6 +1,21 @@
 [build]
 publish = "frontend"
-command = "echo 'Frontend ready'"
+functions = "netlify/functions"
+
+[[redirects]]
+from = "/api/auth/register"
+to = "/.netlify/functions/auth-register"
+status = 200
+
+[[redirects]]
+from = "/api/auth/login"
+to = "/.netlify/functions/auth-login"
+status = 200
+
+[[redirects]]
+from = "/api/tasks*"
+to = "/.netlify/functions/tasks"
+status = 200
 
 [[redirects]]
 from = "/*"
