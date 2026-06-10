@@ -9,7 +9,7 @@ module.exports = function(req) {
         };
     }
 
-    const authorization = req.headers.authorization || "";
+    const authorization = req.headers.authorization || req.headers.Authorization || "";
     const token = authorization.replace(/^Bearer\s+/i, "");
 
     if (!token) {

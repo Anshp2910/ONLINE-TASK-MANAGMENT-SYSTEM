@@ -14,6 +14,14 @@ app.use(express.json());
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/tasks", require("./routes/tasks"));
 
+// Serve static frontend files
+app.use(express.static(path.join(__dirname, "../frontend")));
+
+// Fallback to index.html for client-side routing
+app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../frontend/index.html"));
+});
+
 async function startServer() {
     if (!process.env.MONGO_URI) {
         throw new Error("MONGO_URI is missing from backend/.env");
