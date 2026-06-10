@@ -1,99 +1,136 @@
+const mongoose = require("mongoose");
 const connectDB = require("../lib/db");
 const Task = require("../lib/models/Task");
 const auth = require("../lib/authMiddleware");
 
+const headers = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Content-Type": "application/json"
+};
+
+function respond(statusCode, body) {
+    return {
+        statusCode,
+        headers,
+        body: JSON.stringify(body)
+    };
+}
+
+function getTaskId(event) {
+    return event.path.split("/").filter(Boolean).pop();
+}
+
 exports.handler = async (event) => {
     if (event.httpMethod === "OPTIONS") {
-        return {
-            statusCode: 200,
-            headers: {
-                "Access-Control-Allow-Origin": "*",
-                "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization"
-            }
-        };
+        return respond(200, {});
     }
 
     try {
-        await connectDB();
-        
-        // Authenticate user
         const authResult = auth(event);
         if (authResult.error) {
-            return {
-                statusCode: authResult.status,
-                headers: { "Access-Control-Allow-Origin": "*" },
-                body: JSON.stringify({ msg: authResult.error })
-            };
+            return respond(authResult.status, { msg: authResult.error });
         }
+
+        await connectDB();
 
         const userId = authResult.user.id;
 
         if (event.httpMethod === "GET") {
-            // GET all user tasks
             const tasks = await Task.find({ user: userId });
-            return {
-                statusCode: 200,
-                headers: {
-                    "Access-Control-Allow-Origin": "*",
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(tasks)
-            };
+            return respond(200, tasks);
         }
 
         if (event.httpMethod === "POST") {
-            // ADD task
-            const { title, desc, category, status } = JSON.parse(event.body);
+            const { title, desc, category } = JSON.parse(event.body || "{}");
+
+            if (!title || !title.trim()) {
+                return respond(400, { msg: "Task title is required" });
+            }
+
             const task = new Task({
-                title,
-                desc,
-                category: category || 'General',
-                status: status || 'pending',
+                title: title.trim(),
+                desc: desc || "",
+                category: category || "General",
+                status: "pending",
                 user: userId
             });
+
             await task.save();
-            return {
-                statusCode: 200,
-                headers: {
-                    "Access-Control-Allow-Origin": "*",
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(task)
-            };
+            return respond(201, task);
         }
 
         if (event.httpMethod === "DELETE") {
-            // DELETE task
-            const id = event.path.split('/').pop();
-            await Task.findByIdAndDelete(id);
-            return {
-                statusCode: 200,
-                headers: { "Access-Control-Allow-Origin": "*" },
-                body: JSON.stringify({ msg: "Deleted" })
-            };
+            const id = getTaskId(event);
+
+            if (!mongoose.isValidObjectId(id)) {
+                return respond(400, { msg: "Invalid task ID" });
+            }
+
+            const deleted = await Task.findOneAndDelete({
+                _id: id,
+                user: userId
+            });
+
+            if (!deleted) {
+                return respond(404, { msg: "Task not found" });
+            }
+
+            return respond(200, { msg: "Deleted" });
         }
 
         if (event.httpMethod === "PUT") {
-            // UPDATE task
-            const id = event.path.split('/').pop();
-            const updateData = JSON.parse(event.body);
-            const updated = await Task.findByIdAndUpdate(id, updateData, { new: true });
-            return {
-                statusCode: 200,
-                headers: {
-                    "Access-Control-Allow-Origin": "*",
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(updated)
-            };
+            const id = getTaskId(event);
+
+            if (!mongoose.isValidObjectId(id)) {
+                return respond(400, { msg: "Invalid task ID" });
+            }
+
+            const body = JSON.parse(event.body || "{}");
+            const updateData = {};
+
+            for (const field of ["title", "desc", "category", "status"]) {
+                if (body[field] !== undefined) {
+                    updateData[field] = body[field];
+                }
+            }
+
+            if (updateData.title !== undefined) {
+                updateData.title = String(updateData.title).trim();
+                if (!updateData.title) {
+                    return respond(400, { msg: "Task title is required" });
+                }
+            }
+
+            const updated = await Task.findOneAndUpdate(
+                { _id: id, user: userId },
+                updateData,
+                { new: true, runValidators: true }
+            );
+
+            if (!updated) {
+                return respond(404, { msg: "Task not found" });
+            }
+
+            return respond(200, updated);
         }
 
+        return respond(405, { msg: "Method not allowed" });
     } catch (err) {
-        return {
-            statusCode: 500,
-            headers: { "Access-Control-Allow-Origin": "*" },
-            body: JSON.stringify({ error: err.message })
-        };
+        console.error("Task function error:", err);
+
+        if (err instanceof SyntaxError) {
+            return respond(400, { msg: "Invalid JSON request body" });
+        }
+
+        const configurationError =
+            err.message.includes("MONGO_URI is not configured");
+
+        return respond(500, {
+            msg: configurationError
+                ? err.message
+                : "Unable to process tasks. Check the Netlify function logs."
+        });
     }
 };

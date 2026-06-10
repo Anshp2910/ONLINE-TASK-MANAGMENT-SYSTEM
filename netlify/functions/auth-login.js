@@ -16,8 +16,22 @@ exports.handler = async (event) => {
     }
 
     try {
+        if (!process.env.JWT_SECRET) {
+            throw new Error(
+                "JWT_SECRET is not configured. Add it in Netlify environment variables."
+            );
+        }
+
         await connectDB();
-        const { email, password } = JSON.parse(event.body);
+        const { email, password } = JSON.parse(event.body || "{}");
+
+        if (!email || !password) {
+            return {
+                statusCode: 400,
+                headers: { "Access-Control-Allow-Origin": "*" },
+                body: JSON.stringify({ msg: "Email and password are required" })
+            };
+        }
 
         const user = await User.findOne({ email });
         if (!user) {
@@ -48,10 +62,15 @@ exports.handler = async (event) => {
             body: JSON.stringify({ token })
         };
     } catch (err) {
+        console.error("Login function error:", err);
         return {
             statusCode: 500,
             headers: { "Access-Control-Allow-Origin": "*" },
-            body: JSON.stringify({ error: err.message })
+            body: JSON.stringify({
+                error: err.message.includes("is not configured")
+                    ? err.message
+                    : "Login service is unavailable. Check the Netlify function logs."
+            })
         };
     }
 };

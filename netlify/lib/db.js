@@ -1,19 +1,29 @@
 const mongoose = require("mongoose");
 
-let isConnected = false;
+let connectionPromise = null;
 
 async function connectDB() {
-    if (isConnected) {
+    if (!process.env.MONGO_URI) {
+        throw new Error(
+            "MONGO_URI is not configured. Add it in Netlify environment variables."
+        );
+    }
+
+    if (mongoose.connection.readyState === 1) {
         return mongoose.connection;
     }
 
-    try {
-        await mongoose.connect(process.env.MONGO_URI, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true
+    if (!connectionPromise) {
+        connectionPromise = mongoose.connect(process.env.MONGO_URI, {
+            serverSelectionTimeoutMS: 10000
+        }).catch((error) => {
+            connectionPromise = null;
+            throw error;
         });
-        isConnected = true;
-        console.log("MongoDB Connected");
+    }
+
+    try {
+        await connectionPromise;
         return mongoose.connection;
     } catch (err) {
         console.error("MongoDB Connection Error:", err);

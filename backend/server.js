@@ -1,17 +1,35 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-require("dotenv").config();
+const path = require("path");
+
+require("dotenv").config({ path: path.join(__dirname, ".env") });
 
 const app = express();
+const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => console.log("MongoDB Connected"));
-
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/tasks", require("./routes/tasks"));
 
-app.listen(5000, () => console.log("Server running on 5000"));
+async function startServer() {
+    if (!process.env.MONGO_URI) {
+        throw new Error("MONGO_URI is missing from backend/.env");
+    }
+
+    if (!process.env.JWT_SECRET) {
+        throw new Error("JWT_SECRET is missing from backend/.env");
+    }
+
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB Connected");
+
+    app.listen(port, () => console.log(`Server running on ${port}`));
+}
+
+startServer().catch((error) => {
+    console.error("Server startup failed:", error.message);
+    process.exit(1);
+});

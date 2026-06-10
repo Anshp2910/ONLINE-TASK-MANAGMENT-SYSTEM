@@ -1,8 +1,48 @@
-const API = "/api/tasks";
+const isLocalFrontend =
+    window.location.protocol === "file:" ||
+    ["localhost", "127.0.0.1"].includes(window.location.hostname) &&
+        !["5000", "8888"].includes(window.location.port);
+const API_BASE = isLocalFrontend ? "http://localhost:5000" : "";
+const API = `${API_BASE}/api/tasks`;
 const token = localStorage.getItem("token");
 
 let editingId = null;
 let allTasks = []; // Global state for client-side filtering/sorting
+
+async function apiRequest(url, options = {}) {
+    const res = await fetch(url, {
+        ...options,
+        headers: {
+            Authorization: token,
+            ...options.headers
+        }
+    });
+
+    const contentType = res.headers.get("content-type") || "";
+    const data = contentType.includes("application/json")
+        ? await res.json()
+        : null;
+
+    if (!res.ok) {
+        if (res.status === 401) {
+            localStorage.removeItem("token");
+            window.location.href = "login.html";
+        }
+
+        throw new Error(data?.msg || data?.error || `Request failed (${res.status})`);
+    }
+
+    return data;
+}
+
+function escapeHtml(value = "") {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
 
 // TOAST FUNCTION
 function showToast(message, type = "success") {
@@ -24,13 +64,16 @@ function showToast(message, type = "success") {
 // LOAD TASKS
 async function loadTasks() {
     try {
-        const res = await fetch(API, {
-            headers: { Authorization: token }
-        });
-        allTasks = await res.json();
+        const tasks = await apiRequest(API);
+
+        if (!Array.isArray(tasks)) {
+            throw new Error("Invalid task response");
+        }
+
+        allTasks = tasks;
         applyFiltersAndRender();
     } catch (e) {
-        showToast("Failed to load tasks", "error");
+        showToast(e.message || "Failed to load tasks", "error");
     }
 }
 
@@ -51,61 +94,66 @@ async function addTask() {
     }
 
     try {
-        await fetch(API, {
+        const task = await apiRequest(API, {
             method: "POST",
             headers: {
-                "Content-Type": "application/json",
-                Authorization: token
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({ title, desc, category, status: "pending" })
         });
-        
+
+        if (!task?._id) {
+            throw new Error("Task was not created");
+        }
+
+        allTasks.unshift(task);
+        applyFiltersAndRender();
+
         // Reset inputs
         document.getElementById("title").value = "";
         document.getElementById("desc").value = "";
         document.getElementById("category").value = "General";
 
         showToast("Task added successfully!", "success");
-        loadTasks();
     } catch (e) {
-        showToast("Failed to add task", "error");
+        showToast(e.message || "Failed to add task", "error");
     }
 }
 
 // DELETE
 async function deleteTask(id) {
     try {
-        await fetch(`${API}/${id}`, {
-            method: "DELETE",
-            headers: { Authorization: token }
-        });
+        await apiRequest(`${API}/${id}`, { method: "DELETE" });
 
+        allTasks = allTasks.filter(task => task._id !== id);
+        applyFiltersAndRender();
         showToast("Task deleted", "success");
-        loadTasks();
     } catch (e) {
-        showToast("Failed to delete task", "error");
+        showToast(e.message || "Failed to delete task", "error");
     }
 }
 
 // TOGGLE
-async function toggleStatus(task) {
+async function toggleStatus(id) {
+    const task = allTasks.find(item => item._id === id);
+    if (!task) return;
+
     try {
-        await fetch(`${API}/${task._id}`, {
+        const updated = await apiRequest(`${API}/${task._id}`, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json",
-                Authorization: token
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                ...task,
                 status: task.status === "pending" ? "completed" : "pending"
             })
         });
 
+        allTasks = allTasks.map(item => item._id === id ? updated : item);
+        applyFiltersAndRender();
         showToast("Task status updated", "success");
-        loadTasks();
     } catch (e) {
-        showToast("Failed to update status", "error");
+        showToast(e.message || "Failed to update status", "error");
     }
 }
 
@@ -116,10 +164,10 @@ function startEdit(id) {
 }
 
 // SAVE EDIT
-async function saveEdit(task) {
-    const newTitle = document.getElementById(`edit-title-${task._id}`).value.trim();
-    const newDesc = document.getElementById(`edit-desc-${task._id}`).value.trim();
-    const newCat = document.getElementById(`edit-cat-${task._id}`).value;
+async function saveEdit(id) {
+    const newTitle = document.getElementById(`edit-title-${id}`).value.trim();
+    const newDesc = document.getElementById(`edit-desc-${id}`).value.trim();
+    const newCat = document.getElementById(`edit-cat-${id}`).value;
 
     if (!newTitle) {
         showToast("Task title cannot be empty!", "error");
@@ -127,11 +175,10 @@ async function saveEdit(task) {
     }
 
     try {
-        await fetch(`${API}/${task._id}`, {
+        const updated = await apiRequest(`${API}/${id}`, {
             method: "PUT",
             headers: {
-                "Content-Type": "application/json",
-                Authorization: token
+                "Content-Type": "application/json"
             },
             body: JSON.stringify({
                 title: newTitle,
@@ -141,10 +188,11 @@ async function saveEdit(task) {
         });
 
         editingId = null;
+        allTasks = allTasks.map(task => task._id === id ? updated : task);
+        applyFiltersAndRender();
         showToast("Task updated!", "success");
-        loadTasks();
     } catch (e) {
-        showToast("Failed to update task", "error");
+        showToast(e.message || "Failed to update task", "error");
     }
 }
 
@@ -165,13 +213,17 @@ function renderTasks(tasks) {
 
     tasks.forEach(task => {
         const catValue = task.category || "General";
+        const safeTitle = escapeHtml(task.title);
+        const safeDesc = escapeHtml(task.desc);
+        const safeCategory = escapeHtml(catValue);
+        const safeStatus = task.status === "completed" ? "completed" : "pending";
         
         if (editingId === task._id) {
             htmlStr += `
                 <div class="task">
                     <div style="flex: 1; margin-right: 15px;">
-                        <input id="edit-title-${task._id}" value="${task.title}" class="edit-input" placeholder="Title">
-                        <input id="edit-desc-${task._id}" value="${task.desc}" class="edit-input" placeholder="Description">
+                        <input id="edit-title-${task._id}" value="${safeTitle}" class="edit-input" placeholder="Title">
+                        <input id="edit-desc-${task._id}" value="${safeDesc}" class="edit-input" placeholder="Description">
                         <select id="edit-cat-${task._id}" class="edit-input">
                             <option value="General" ${catValue === 'General' ? 'selected' : ''}>General</option>
                             <option value="Work" ${catValue === 'Work' ? 'selected' : ''}>Work</option>
@@ -183,7 +235,7 @@ function renderTasks(tasks) {
                     </div>
 
                     <div class="btn-group">
-                        <button class="btn save-btn" onclick='saveEdit(${JSON.stringify(task)})'>Save</button>
+                        <button class="btn save-btn" onclick="saveEdit('${task._id}')">Save</button>
                         <button class="btn cancel-btn" onclick="editingId=null; applyFiltersAndRender()">Cancel</button>
                     </div>
                 </div>
@@ -192,23 +244,27 @@ function renderTasks(tasks) {
             htmlStr += `
                 <div class="task">
                     <div class="task-info">
-                        <h3>${task.title}</h3>
-                        <p>${task.desc}</p>
-                        <span class="category-tag">${catValue}</span>
+                        <h3>${safeTitle}</h3>
+                        <p>${safeDesc}</p>
+                        <span class="category-tag">${safeCategory}</span>
                     </div>
 
-                    <span class="status ${task.status}">${task.status}</span>
+                    <span class="status ${safeStatus}">${safeStatus}</span>
 
                     <div class="btn-group">
                         <button class="btn edit-btn" onclick="startEdit('${task._id}')">Edit</button>
                         <button class="btn delete-btn" onclick="deleteTask('${task._id}')">Delete</button>
-                        <button class="btn save-btn" onclick='toggleStatus(${JSON.stringify(task)})'>Toggle</button>
+                        <button class="btn save-btn" onclick="toggleStatus('${task._id}')">Toggle</button>
                     </div>
                 </div>
             `;
         }
 
     });
+
+    if (!htmlStr) {
+        htmlStr = "<p class=\"empty-state\">No tasks yet. Add your first task above.</p>";
+    }
 
     list.innerHTML = htmlStr;
 }
